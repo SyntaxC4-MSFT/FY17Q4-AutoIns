@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+This file is used by the publish/package process of your Web project. You can customize the behavior of this process
+by editing this MSBuild file. In order to learn more about this please visit http://go.microsoft.com/fwlink/?LinkID=208121. 
+-->
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <TimeStampOfAssociatedLegacyPublishXmlFile />
+    <EncryptedPassword>AQAAANCMnd8BFdERjHoAwE/Cl+sBAAAAyHc8UUsCjEO3IoDvIMe2uQAAAAACAAAAAAAQZgAAAAEAACAAAAAAR6nUykOCwf1jH2z1noGYhpF3DOm1c6kNBri/VJDzrAAAAAAOgAAAAAIAACAAAACVRkGizXnWR623dFUvrso2f4tLcI0+8inuop94/XsM1oAAAAB88nluNf4KTAECs7Q5i9accjTENBCKpzRuq2G2CQrhjahSZ5fJttMdIQeZzSdLt0fUGnyIdjiK6SJnVmjGgjaQgJvcFr1MuyjEA7vCharYwz5kHCYay22IAMyC05SZdAY+1AJamxWZZLg/+H5m33A/RhbXVVmkiBJiC+1Tl0CA1kAAAABGJuC+e+0jnV/7l+x8yMiYtKJo0vr6Ojm4FAQMSEXOL45NhK55mn/Iz9P/ajL0NQKnrCNxE/253jI268fA9Flq</EncryptedPassword>
+  </PropertyGroup>
+  <ItemGroup>
+    <AzureDBConnectionStrings Include="Server=tcp:contosoinsurance4bisrf-dbserver.database.windows.net,1433;Database=CRMClaims;User Id=ContosoInsurance@contosoinsurance4bisrf-dbserver;Password=Beat@Apple" />
+    <AzureDBConnectionStrings Include="Server=tcp:contosoinsurance4bisrf-dbserver.database.windows.net,1433;Database=MobileClaims;User Id=ContosoInsurance@contosoinsurance4bisrf-dbserver;Password=Beat@Apple" />
+  </ItemGroup>
+</Project>

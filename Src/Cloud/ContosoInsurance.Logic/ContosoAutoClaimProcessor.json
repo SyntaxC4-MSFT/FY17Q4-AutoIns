@@ -1,0 +1,793 @@
+﻿{
+  "definition": {
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "$connections": {
+        "defaultValue": {},
+        "type": "Object"
+      },
+      "$claimImagesSuffix": {
+        "defaultValue": [
+          "01",
+          "02",
+          "03",
+          "04",
+          "05"
+        ],
+        "type": "Array"
+      },
+      "$settings": {
+        "defaultValue": {},
+        "type": "Object"
+      }
+    },
+    "triggers": {
+      "MobileQueueTrigger": {
+        "inputs": {
+          "host": {
+            "api": {
+              "runtimeUrl": "https://logic-apis-westus.azure-apim.net/apim/azurequeues"
+            },
+            "connection": {
+              "name": "@parameters('$connections')['azurequeues']['connectionId']"
+            }
+          },
+          "method": "get",
+          "path": "/@{encodeURIComponent('mobile-claims')}/message_trigger",
+          "queries": {
+            "visibilitytimeout": "30"
+          }
+        },
+        "recurrence": {
+          "frequency": "Minute",
+          "interval": 3
+        },
+        "splitOn": "@triggerBody()?.QueueMessagesList.QueueMessage",
+        "type": "ApiConnection"
+      }
+    },
+    "actions": {
+      "AddCRMClaim": {
+        "inputs": {
+          "body": {
+            "City": "@{body('AnalysisPictureJson').City}",
+            "CorrelationId": "@{body('GetMobileClaimById')['Id']}",
+            "DOB": "@{body('AnalysisPictureJson').DOB}",
+            "DateTime": "@{body('GetMobileClaimById')['DateTime']}",
+            "Description": "@{body('GetMobileClaimById')?['Description']}",
+            "DriversLicenseImageUrl": "@concat(parameters('$settings')['blobContainersUrl'],'/other-party-license-images/other-party-license-',json(triggerBody()?['MessageText']).Id)",
+            "DriversLicenseNumber": "@{body('AnalysisPictureJson').DriversLicenseNumber}",
+            "FirstName": "@{body('AnalysisPictureJson').FirstName}",
+            "InsuranceCardImageUrl": "@concat(parameters('$settings')['blobContainersUrl'],'/other-party-card-images/other-party-card-',json(triggerBody()?['MessageText']).Id)",
+            "LastName": "@{body('AnalysisPictureJson').LastName}",
+            "LicensePlate": "@{body('AnalysisPictureJson').LicensePlate}",
+            "LicensePlateImageUrl": "@concat(parameters('$settings')['blobContainersUrl'],'/other-party-plate-images/other-party-plate-',json(triggerBody()?['MessageText']).Id)",
+            "MobilePhone": "@{body('GetMobileClaimById')?['OtherPartyMobilePhone']}",
+            "PolicyEnd": "@{body('AnalysisPictureJson').PolicyEnd}",
+            "PolicyId": "@{body('AnalysisPictureJson').PolicyId}",
+            "PolicyStart": "@{body('AnalysisPictureJson').PolicyStart}",
+            "State": "@{body('AnalysisPictureJson').State}",
+            "Street": "@{body('AnalysisPictureJson').Street}",
+            "VIN": "@{body('AnalysisPictureJson').VIN}",
+            "VehicleId": "@body('GetMobileClaimById')['VehicleId']",
+            "Zip": "@{body('AnalysisPictureJson').Zip}"
+          },
+          "host": {
+            "api": {
+              "runtimeUrl": "https://logic-apis-westus.azure-apim.net/apim/sql"
+            },
+            "connection": {
+              "name": "@parameters('$connections')['crmsql']['connectionId']"
+            }
+          },
+          "method": "post",
+          "path": "/datasets/default/procedures/@{encodeURIComponent(encodeURIComponent('[dbo].[Insert_CRM_Claim]'))}"
+        },
+        "runAfter": {
+          "TrackCustomEvent_-_Analysis_Picture_Completed": [
+            "Succeeded"
+          ]
+        },
+        "type": "ApiConnection"
+      },
+      "AnalysisPictureJson": {
+        "inputs": {
+          "body": {
+            "partycard": "@body('CardImageByOCRRest')",
+            "partylicense": "@body('LicenseImageByOCRRest')",
+            "partyplate": "@body('PlateImageByOCRRest')"
+          },
+          "function": {
+            "id": "[concat(resourceId('Microsoft.Web/sites', variables('functionAppName')), '/functions/AnalysisPictureJson')]"
+          }
+        },
+        "runAfter": {
+          "TrackCustomEvent_-_Other_Party_Card_QCR_Completed": [
+            "Succeeded"
+          ],
+          "TrackCustomEvent_-_Other_Party_License_QCR_Completed": [
+            "Succeeded"
+          ],
+          "TrackCustomEvent_-_Other_Party_Plate_QCR_Completed": [
+            "Succeeded"
+          ]
+        },
+        "type": "Function"
+      },
+      "CardImageByOCRRest": {
+        "inputs": {
+          "body": "@body('GetOtherPartyCardByPath')",
+          "headers": {
+            "Content-Type": "application/octet-stream",
+            "Ocp-Apim-Subscription-Key": "@parameters('$settings')['visionServiceSubscriptionKey']"
+          },
+          "method": "POST",
+          "uri": "https://westus.api.cognitive.microsoft.com/vision/v1.0/ocr?language=unk&detectOrientation=true"
+        },
+        "runAfter": {
+          "GetOtherPartyCardByPath": [
+            "Succeeded"
+          ]
+        },
+        "type": "Http"
+      },
+      "CheckClaimExistByVehicle": {
+        "actions": {
+          "SendAutoRejectedEmail": {
+            "inputs": {
+              "body": {
+                "Body": "<p>Claim number @{body('GetCRMClaim')?['Id']} was not auto approved. Please review the claim and approve or reject it.</p>\n<p><a href=\"@{parameters('$settings')['claimDetailsPageBaseUrl']}@{body('GetCRMClaim')?['Id']}\">@{parameters('$settings')['claimDetailsPageBaseUrl']}@{body('GetCRMClaim')?['Id']}</p>",
+                "Importance": "Normal",
+                "IsHtml": true,
+                "Subject": "Claim Pending Review",
+                "To": "@parameters('$settings')['claimsAdjusterEmail']"
+              },
+              "host": {
+                "api": {
+                  "runtimeUrl": "https://logic-apis-westus.azure-apim.net/apim/office365"
+                },
+                "connection": {
+                  "name": "@parameters('$connections')['office365']['connectionId']"
+                }
+              },
+              "method": "post",
+              "path": "/Mail"
+            },
+            "runAfter": {
+              "UpdateClaimRejectStauts": [
+                "Succeeded"
+              ]
+            },
+            "type": "ApiConnection"
+          },
+          "TrackCustomEvent_-_Auto_Rejected_Email_Sent": {
+            "inputs": {
+              "body": {
+                "EventName": "Logic App Status",
+                "Metrics": {
+                  "Logic App": 0
+                },
+                "Properties": {
+                  "CorrelationId": "@{json(triggerBody()?['MessageText']).Id}",
+                  "Description": "Claim Auto Rejected Email Sent",
+                  "Host": "To be determined",
+                  "LogType": "Status Log",
+                  "RunName": "@workflow()['run']['name']"
+                }
+              },
+              "function": {
+                "id": "[concat(resourceId('Microsoft.Web/sites', variables('functionAppName')), '/functions/TrackCustomEvent')]"
+              }
+            },
+            "runAfter": {
+              "SendAutoRejectedEmail": [
+                "Succeeded"
+              ]
+            },
+            "type": "Function"
+          },
+          "UpdateClaimRejectStauts": {
+            "inputs": {
+              "body": {
+                "Coordinates": "@{body('GetMobileClaimById')?['Coordinates']}",
+                "CorrelationId": "@{body('GetCRMClaim')['CorrelationId']}",
+                "DateTime": "@{body('GetCRMClaim')['DateTime']}",
+                "DueDate": "@{body('GetCRMClaim')['DueDate']}",
+                "OtherPartyId": "@body('GetCRMClaim')['OtherPartyId']",
+                "Status": 2,
+                "VehicleId": "@body('GetCRMClaim')['VehicleId']"
+              },
+              "host": {
+                "api": {
+                  "runtimeUrl": "https://logic-apis-westus.azure-apim.net/apim/sql"
+                },
+                "connection": {
+                  "name": "@parameters('$connections')['crmsql']['connectionId']"
+                }
+              },
+              "method": "patch",
+              "path": "/datasets/default/tables/@{encodeURIComponent(encodeURIComponent('[CRM].[Claims]'))}/items/@{encodeURIComponent(encodeURIComponent(body('GetCRMClaim')?['Id']))}"
+            },
+            "runAfter": {},
+            "type": "ApiConnection"
+          }
+        },
+        "else": {
+          "actions": {
+            "SendAutoApprovedEmail": {
+              "inputs": {
+                "body": {
+                  "Body": "<p>Hello @{body('AddCRMClaim')?['OutputParameters']['CustomerName']},</p>\n<p>The claim you recently submitted was automatically approved. You can proceed to schedule repairs. If you have any questions, please contact your agent.</p>\n<p>Claim number: @{body('GetCRMClaim')?['Id']}</p>",
+                  "Importance": "Normal",
+                  "IsHtml": true,
+                  "Subject": "Claim Automatically Approved",
+                  "To": "@{body('AddCRMClaim')?['OutputParameters']['customerEmail']}"
+                },
+                "host": {
+                  "api": {
+                    "runtimeUrl": "https://logic-apis-westus.azure-apim.net/apim/office365"
+                  },
+                  "connection": {
+                    "name": "@parameters('$connections')['office365']['connectionId']"
+                  }
+                },
+                "method": "post",
+                "path": "/Mail"
+              },
+              "runAfter": {
+                "UpdateClaimApproveStatus": [
+                  "Succeeded"
+                ]
+              },
+              "type": "ApiConnection"
+            },
+            "TrackCustomEvent_-_Auto_Approved_Email_Sent": {
+              "inputs": {
+                "body": {
+                  "EventName": "Logic App Status",
+                  "Metrics": {
+                    "Logic App": 0
+                  },
+                  "Properties": {
+                    "CorrelationId": "@{json(triggerBody()?['MessageText']).Id}",
+                    "Description": "Claim Auto Approved Email Sent",
+                    "Host": "To be determined",
+                    "LogType": "Status Log",
+                    "RunName": "@workflow()['run']['name']"
+                  }
+                },
+                "function": {
+                  "id": "[concat(resourceId('Microsoft.Web/sites', variables('functionAppName')), '/functions/TrackCustomEvent')]"
+                }
+              },
+              "runAfter": {
+                "SendAutoApprovedEmail": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Function"
+            },
+            "UpdateClaimApproveStatus": {
+              "inputs": {
+                "body": {
+                  "Coordinates": "@{body('GetMobileClaimById')?['Coordinates']}",
+                  "CorrelationId": "@{body('GetCRMClaim')['CorrelationId']}",
+                  "DateTime": "@{body('GetCRMClaim')['DateTime']}",
+                  "DueDate": "@{body('GetCRMClaim')['DueDate']}",
+                  "OtherPartyId": "@body('GetCRMClaim')['OtherPartyId']",
+                  "Status": 1,
+                  "VehicleId": "@body('GetCRMClaim')['VehicleId']"
+                },
+                "host": {
+                  "api": {
+                    "runtimeUrl": "https://logic-apis-westus.azure-apim.net/apim/sql"
+                  },
+                  "connection": {
+                    "name": "@parameters('$connections')['crmsql']['connectionId']"
+                  }
+                },
+                "method": "patch",
+                "path": "/datasets/default/tables/@{encodeURIComponent(encodeURIComponent('[CRM].[Claims]'))}/items/@{encodeURIComponent(encodeURIComponent(body('GetCRMClaim')?['Id']))}"
+              },
+              "runAfter": {},
+              "type": "ApiConnection"
+            }
+          }
+        },
+        "expression": "@greater(body('AddCRMClaim')?['OutputParameters']['ClaimCountByVehicle'], 1)",
+        "runAfter": {
+          "TrackCustomEvent_-_Insert_Claim_Images_Completed": [
+            "Succeeded"
+          ]
+        },
+        "type": "If"
+      },
+      "Delete_message": {
+        "inputs": {
+          "host": {
+            "api": {
+              "runtimeUrl": "https://logic-apis-westus.azure-apim.net/apim/azurequeues"
+            },
+            "connection": {
+              "name": "@parameters('$connections')['azurequeues']['connectionId']"
+            }
+          },
+          "method": "delete",
+          "path": "/@{encodeURIComponent('mobile-claims')}/messages/@{encodeURIComponent(triggerBody()?['MessageId'])}",
+          "queries": {
+            "popreceipt": "@{triggerBody()?['PopReceipt']}"
+          }
+        },
+        "runAfter": {
+          "CheckClaimExistByVehicle": [
+            "Succeeded"
+          ]
+        },
+        "type": "ApiConnection"
+      },
+      "GetAndInsertClaimImageForEach": {
+        "actions": {
+          "Condition": {
+            "actions": {
+              "AddClaimImageToTable": {
+                "inputs": {
+                  "body": {
+                    "ClaimId": "@body('AddCRMClaim')?['ReturnCode']",
+                    "ImageUrl": "@concat(parameters('$settings')['blobContainersUrl'],body('GetClaimImageMetaData')?['Path'])"
+                  },
+                  "host": {
+                    "api": {
+                      "runtimeUrl": "https://logic-apis-westus.azure-apim.net/apim/sql"
+                    },
+                    "connection": {
+                      "name": "@parameters('$connections')['crmsql']['connectionId']"
+                    }
+                  },
+                  "method": "post",
+                  "path": "/datasets/default/tables/@{encodeURIComponent(encodeURIComponent('[CRM].[ClaimImages]'))}/items"
+                },
+                "runAfter": {},
+                "type": "ApiConnection"
+              }
+            },
+            "expression": "@equals(outputs('GetClaimImageMetaData')['statusCode'], 200)",
+            "runAfter": {
+              "GetClaimImageMetaData": [
+                "Succeeded",
+                "Failed"
+              ]
+            },
+            "type": "If"
+          },
+          "GetClaimImageMetaData": {
+            "inputs": {
+              "host": {
+                "api": {
+                  "runtimeUrl": "https://logic-apis-westus.azure-apim.net/apim/azureblob"
+                },
+                "connection": {
+                  "name": "@parameters('$connections')['azureblob']['connectionId']"
+                }
+              },
+              "method": "get",
+              "path": "/datasets/default/GetFileByPath",
+              "queries": {
+                "path": "@concat('/claim-images/claim-',json(triggerBody()?['MessageText']).Id,'-',item())"
+              }
+            },
+            "runAfter": {},
+            "type": "ApiConnection"
+          }
+        },
+        "foreach": "@parameters('$claimImagesSuffix')",
+        "runAfter": {
+          "TrackCustomEvent_-_Get_CRM_Claim_Completed": [
+            "Succeeded"
+          ]
+        },
+        "type": "Foreach"
+      },
+      "GetCRMClaim": {
+        "inputs": {
+          "host": {
+            "api": {
+              "runtimeUrl": "https://logic-apis-westus.azure-apim.net/apim/sql"
+            },
+            "connection": {
+              "name": "@parameters('$connections')['crmsql']['connectionId']"
+            }
+          },
+          "method": "get",
+          "path": "/datasets/default/tables/@{encodeURIComponent(encodeURIComponent('[CRM].[Claims]'))}/items/@{encodeURIComponent(encodeURIComponent(body('AddCRMClaim')?['ReturnCode']))}"
+        },
+        "runAfter": {
+          "TrackCustomEvent_-_Insert_Claim_to_CRM_Database_completed": [
+            "Succeeded"
+          ]
+        },
+        "type": "ApiConnection"
+      },
+      "GetMobileClaimById": {
+        "inputs": {
+          "host": {
+            "api": {
+              "runtimeUrl": "https://logic-apis-westus.azure-apim.net/apim/sql"
+            },
+            "connection": {
+              "name": "@parameters('$connections')['mobilesql']['connectionId']"
+            }
+          },
+          "method": "get",
+          "path": "/datasets/default/tables/@{encodeURIComponent(encodeURIComponent('[Mobile].[Claims]'))}/items/@{json(triggerBody()?['MessageText']).Id}"
+        },
+        "runAfter": {
+          "TrackCustomEvent_-_Triggered_By_Mobile-claims_Queue": [
+            "Succeeded"
+          ]
+        },
+        "type": "ApiConnection"
+      },
+      "GetOtherPartyCardByPath": {
+        "inputs": {
+          "host": {
+            "api": {
+              "runtimeUrl": "https://logic-apis-westus.azure-apim.net/apim/azureblob"
+            },
+            "connection": {
+              "name": "@parameters('$connections')['azureblob']['connectionId']"
+            }
+          },
+          "method": "get",
+          "path": "/datasets/default/GetFileContentByPath",
+          "queries": {
+            "path": "/other-party-card-images/other-party-card-@{json(triggerBody()?['MessageText']).Id}"
+          }
+        },
+        "runAfter": {
+          "TrackCustomEvent_-_Get_Mobile_Claim_By_Id_Completed": [
+            "Succeeded"
+          ]
+        },
+        "type": "ApiConnection"
+      },
+      "GetOtherPartyLicenseByPath": {
+        "inputs": {
+          "host": {
+            "api": {
+              "runtimeUrl": "https://logic-apis-westus.azure-apim.net/apim/azureblob"
+            },
+            "connection": {
+              "name": "@parameters('$connections')['azureblob']['connectionId']"
+            }
+          },
+          "method": "get",
+          "path": "/datasets/default/GetFileContentByPath",
+          "queries": {
+            "path": "/other-party-license-images/other-party-license-@{json(triggerBody()?['MessageText']).Id}"
+          }
+        },
+        "runAfter": {
+          "TrackCustomEvent_-_Get_Mobile_Claim_By_Id_Completed": [
+            "Succeeded"
+          ]
+        },
+        "type": "ApiConnection"
+      },
+      "GetOtherPartyPlateByPath": {
+        "inputs": {
+          "host": {
+            "api": {
+              "runtimeUrl": "https://logic-apis-westus.azure-apim.net/apim/azureblob"
+            },
+            "connection": {
+              "name": "@parameters('$connections')['azureblob']['connectionId']"
+            }
+          },
+          "method": "get",
+          "path": "/datasets/default/GetFileContentByPath",
+          "queries": {
+            "path": "/other-party-plate-images/other-party-plate-@{json(triggerBody()?['MessageText']).Id}"
+          }
+        },
+        "runAfter": {
+          "TrackCustomEvent_-_Get_Mobile_Claim_By_Id_Completed": [
+            "Succeeded"
+          ]
+        },
+        "type": "ApiConnection"
+      },
+      "LicenseImageByOCRRest": {
+        "inputs": {
+          "body": "@body('GetOtherPartyLicenseByPath')",
+          "headers": {
+            "Content-Type": "application/octet-stream",
+            "Ocp-Apim-Subscription-Key": "@parameters('$settings')['visionServiceSubscriptionKey']"
+          },
+          "method": "POST",
+          "uri": "https://westus.api.cognitive.microsoft.com/vision/v1.0/ocr?language=unk&detectOrientation=true"
+        },
+        "runAfter": {
+          "GetOtherPartyLicenseByPath": [
+            "Succeeded"
+          ]
+        },
+        "type": "Http"
+      },
+      "PlateImageByOCRRest": {
+        "inputs": {
+          "body": "@body('GetOtherPartyPlateByPath')",
+          "headers": {
+            "Content-Type": "application/octet-stream",
+            "Ocp-Apim-Subscription-Key": "@parameters('$settings')['visionServiceSubscriptionKey']"
+          },
+          "method": "POST",
+          "uri": "https://westus.api.cognitive.microsoft.com/vision/v1.0/ocr?language=unk&detectOrientation=true"
+        },
+        "runAfter": {
+          "GetOtherPartyPlateByPath": [
+            "Succeeded"
+          ]
+        },
+        "type": "Http"
+      },
+      "TrackCustomEvent_-_Analysis_Picture_Completed": {
+        "inputs": {
+          "body": {
+            "EventName": "Logic App Status",
+            "Metrics": {
+              "Logic App": 0
+            },
+            "Properties": {
+              "CorrelationId": "@{json(triggerBody()?['MessageText']).Id}",
+              "Description": "Analysis Picture Completed",
+              "Host": "To be determined",
+              "LogType": "Status Log",
+              "RunName": "@workflow()['run']['name']"
+            }
+          },
+          "function": {
+            "id": "[concat(resourceId('Microsoft.Web/sites', variables('functionAppName')), '/functions/TrackCustomEvent')]"
+          }
+        },
+        "runAfter": {
+          "AnalysisPictureJson": [
+            "Succeeded"
+          ]
+        },
+        "type": "Function"
+      },
+      "TrackCustomEvent_-_Auto_Claim_Processor_completed": {
+        "inputs": {
+          "body": {
+            "EventName": "Logic App Status",
+            "Metrics": {
+              "Logic App": 0
+            },
+            "Properties": {
+              "CorrelationId": "@{json(triggerBody()?['MessageText']).Id}",
+              "Description": "Auto Claim Processor completed",
+              "Host": "To be determined",
+              "LogType": "Status Log",
+              "RunName": "@workflow()['run']['name']"
+            }
+          },
+          "function": {
+            "id": "[concat(resourceId('Microsoft.Web/sites', variables('functionAppName')), '/functions/TrackCustomEvent')]"
+          }
+        },
+        "runAfter": {
+          "Delete_message": [
+            "Succeeded"
+          ]
+        },
+        "type": "Function"
+      },
+      "TrackCustomEvent_-_Get_CRM_Claim_Completed": {
+        "inputs": {
+          "body": {
+            "EventName": "Logic App Status",
+            "Metrics": {
+              "Logic App": 0
+            },
+            "Properties": {
+              "Description": "Data queried from CRM Claims SQL database",
+              "Host": "To be determined",
+              "Id": "@{body('GetCRMClaim')['Id']}",
+              "LogType": "Status Log",
+              "RunName": "@workflow()['run']['name']"
+            }
+          },
+          "function": {
+            "id": "[concat(resourceId('Microsoft.Web/sites', variables('functionAppName')), '/functions/TrackCustomEvent')]"
+          }
+        },
+        "runAfter": {
+          "GetCRMClaim": [
+            "Succeeded"
+          ]
+        },
+        "type": "Function"
+      },
+      "TrackCustomEvent_-_Get_Mobile_Claim_By_Id_Completed": {
+        "inputs": {
+          "body": {
+            "EventName": "Logic App Status",
+            "Metrics": {
+              "Logic App": 0
+            },
+            "Properties": {
+              "CorrelationId": "@{body('GetMobileClaimById')['Id']}",
+              "Description": "Data queried from Mobile Claims SQL database",
+              "Host": "To be determined",
+              "LogType": "Status Log",
+              "RunName": "@workflow()['run']['name']"
+            }
+          },
+          "function": {
+            "id": "[concat(resourceId('Microsoft.Web/sites', variables('functionAppName')), '/functions/TrackCustomEvent')]"
+          }
+        },
+        "runAfter": {
+          "GetMobileClaimById": [
+            "Succeeded"
+          ]
+        },
+        "type": "Function"
+      },
+      "TrackCustomEvent_-_Insert_Claim_Images_Completed": {
+        "inputs": {
+          "body": {
+            "EventName": "Logic App Status",
+            "Metrics": {
+              "Logic App": 0
+            },
+            "Properties": {
+              "CorrelationId": "@{json(triggerBody()?['MessageText']).Id}",
+              "Description": "Get claim images from blob and inserted into CRM ClaimsImages SQL database completed",
+              "Host": "To be determined",
+              "LogType": "Status Log",
+              "RunName": "@workflow()['run']['name']"
+            }
+          },
+          "function": {
+            "id": "[concat(resourceId('Microsoft.Web/sites', variables('functionAppName')), '/functions/TrackCustomEvent')]"
+          }
+        },
+        "runAfter": {
+          "GetAndInsertClaimImageForEach": [
+            "Succeeded"
+          ]
+        },
+        "type": "Function"
+      },
+      "TrackCustomEvent_-_Insert_Claim_to_CRM_Database_completed": {
+        "inputs": {
+          "body": {
+            "EventName": "Logic App Status",
+            "Metrics": {
+              "Logic App": 0
+            },
+            "Properties": {
+              "CorrelationId": "@{json(triggerBody()?['MessageText']).Id}",
+              "Description": "Data inserted into CRM Claims SQL database",
+              "Host": "To be determined",
+              "LogType": "Status Log",
+              "RunName": "@workflow()['run']['name']"
+            }
+          },
+          "function": {
+            "id": "[concat(resourceId('Microsoft.Web/sites', variables('functionAppName')), '/functions/TrackCustomEvent')]"
+          }
+        },
+        "runAfter": {
+          "AddCRMClaim": [
+            "Succeeded"
+          ]
+        },
+        "type": "Function"
+      },
+      "TrackCustomEvent_-_Other_Party_Card_QCR_Completed": {
+        "inputs": {
+          "body": {
+            "EventName": "Logic App Status",
+            "Metrics": {
+              "Logic App": 0
+            },
+            "Properties": {
+              "CorrelationId": "@{json(triggerBody()?['MessageText']).Id}",
+              "Description": "Other Party Card OCR Completed",
+              "Host": "To be determined",
+              "LogType": "Status Log",
+              "RunName": "@workflow()['run']['name']"
+            }
+          },
+          "function": {
+            "id": "[concat(resourceId('Microsoft.Web/sites', variables('functionAppName')), '/functions/TrackCustomEvent')]"
+          }
+        },
+        "runAfter": {
+          "CardImageByOCRRest": [
+            "Succeeded"
+          ]
+        },
+        "type": "Function"
+      },
+      "TrackCustomEvent_-_Other_Party_License_QCR_Completed": {
+        "inputs": {
+          "body": {
+            "EventName": "Logic App Status",
+            "Metrics": {
+              "Logic App": 0
+            },
+            "Properties": {
+              "CorrelationId": "@{json(triggerBody()?['MessageText']).Id}",
+              "Description": "Other Party License OCR Completed",
+              "Host": "To be determined",
+              "LogType": "Status Log",
+              "RunName": "@workflow()['run']['name']"
+            }
+          },
+          "function": {
+            "id": "[concat(resourceId('Microsoft.Web/sites', variables('functionAppName')), '/functions/TrackCustomEvent')]"
+          }
+        },
+        "runAfter": {
+          "LicenseImageByOCRRest": [
+            "Succeeded"
+          ]
+        },
+        "type": "Function"
+      },
+      "TrackCustomEvent_-_Other_Party_Plate_QCR_Completed": {
+        "inputs": {
+          "body": {
+            "EventName": "Logic App Status",
+            "Metrics": {
+              "Logic App": 0
+            },
+            "Properties": {
+              "CorrelationId": "@{json(triggerBody()?['MessageText']).Id}",
+              "Description": "Other Party Plate OCR Completed",
+              "Host": "To be determined",
+              "LogType": "Status Log",
+              "RunName": "@workflow()['run']['name']"
+            }
+          },
+          "function": {
+            "id": "[concat(resourceId('Microsoft.Web/sites', variables('functionAppName')), '/functions/TrackCustomEvent')]"
+          }
+        },
+        "runAfter": {
+          "PlateImageByOCRRest": [
+            "Succeeded"
+          ]
+        },
+        "type": "Function"
+      },
+      "TrackCustomEvent_-_Triggered_By_Mobile-claims_Queue": {
+        "inputs": {
+          "body": {
+            "EventName": "Logic App Status",
+            "Metrics": {
+              "Logic App": 0
+            },
+            "Properties": {
+              "CorrelationId": "@{json(triggerBody()?['MessageText']).Id}",
+              "Description": "ContosoAutoClaimProcessor Logic App triggered by mobile-claims queue",
+              "Host": "To be determined",
+              "LogType": "Status Log",
+              "RunName": "@workflow()['run']['name']"
+            }
+          },
+          "function": {
+            "id": "[concat(resourceId('Microsoft.Web/sites', variables('functionAppName')), '/functions/TrackCustomEvent')]"
+          }
+        },
+        "runAfter": {},
+        "type": "Function"
+      }
+    },
+    "outputs": {}
+  }
+}

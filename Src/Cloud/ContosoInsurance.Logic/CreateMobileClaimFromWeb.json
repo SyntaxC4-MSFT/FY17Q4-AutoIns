@@ -1,0 +1,380 @@
+﻿{
+  "definition": {
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "actions": {
+      "Persist_new_claim_to_DB": {
+        "inputs": {
+          "body": {
+            "Description": "@{triggerBody()?['description']}",
+            "OtherPartyMobilePhone": "@{triggerBody()?['phonenumber']}",
+            "claimId": "@{triggerBody()?['claimId']}",
+            "userId": "@{triggerBody()?['userId']}",
+            "vehicleId": "@{triggerBody()?['vehicleId']}"
+          },
+          "host": {
+            "api": {
+              "runtimeUrl": "https://logic-apis-westus.azure-apim.net/apim/sql"
+            },
+            "connection": {
+              "name": "@parameters('$connections')['mobilesql']['connectionId']"
+            }
+          },
+          "method": "post",
+          "path": "/datasets/default/procedures/@{encodeURIComponent(encodeURIComponent('[dbo].[Insert_Mobile_Claim]'))}"
+        },
+        "runAfter": {},
+        "type": "ApiConnection"
+      },
+      "Put_a_message_on_a_queue": {
+        "inputs": {
+          "body": "@concat('{\"Id\":\"',triggerBody()?['claimId'],'\"}')",
+          "host": {
+            "api": {
+              "runtimeUrl": "https://logic-apis-westus.azure-apim.net/apim/azurequeues"
+            },
+            "connection": {
+              "name": "@parameters('$connections')['azurequeues']['connectionId']"
+            }
+          },
+          "method": "post",
+          "path": "/@{encodeURIComponent('mobile-claims')}/messages"
+        },
+        "runAfter": {
+          "Save_Claim_Images": [
+            "Succeeded"
+          ],
+          "TrackCustomEvent_-_after_saving_claim_images_to_blob": [
+            "Succeeded"
+          ]
+        },
+        "type": "ApiConnection"
+      },
+      "Response": {
+        "inputs": {
+          "statusCode": 200
+        },
+        "runAfter": {
+          "Put_a_message_on_a_queue": [
+            "Succeeded"
+          ],
+          "TrackCustomEvent_-_after_sending_message_to_queue_": [
+            "Succeeded"
+          ]
+        },
+        "type": "Response"
+      },
+      "Save_Claim_Images": {
+        "actions": {
+          "Create_blob": {
+            "inputs": {
+              "body": "@json(concat('{\"$content-type\":\"image/jpeg\",\"$content\":\"',item()?['plateJson'],'\"}'))",
+              "host": {
+                "api": {
+                  "runtimeUrl": "https://logic-apis-westus.azure-apim.net/apim/azureblob"
+                },
+                "connection": {
+                  "name": "@parameters('$connections')['azureblob']['connectionId']"
+                }
+              },
+              "method": "post",
+              "path": "/datasets/default/files",
+              "queries": {
+                "folderPath": "/claim-images",
+                "name": "@item()?['imgName']"
+              }
+            },
+            "runAfter": {},
+            "type": "ApiConnection"
+          }
+        },
+        "foreach": "@triggerBody()?['postImages']?['claimImages']",
+        "runAfter": {
+          "Save_Other_Party_Images": [
+            "Succeeded"
+          ],
+          "TrackCustomEvent_-_after_saving_other_party_images_to_blob": [
+            "Succeeded"
+          ]
+        },
+        "type": "Foreach"
+      },
+      "Save_Other_Party_Images": {
+        "actions": {
+          "Condition": {
+            "actions": {
+              "StoreLicensePlateImageToBlob": {
+                "inputs": {
+                  "body": "@json(concat('{\"$content-type\":\"image/jpeg\",\"$content\":\"',item()?['plateJson'],'\"}'))",
+                  "host": {
+                    "api": {
+                      "runtimeUrl": "https://logic-apis-westus.azure-apim.net/apim/azureblob"
+                    },
+                    "connection": {
+                      "name": "@parameters('$connections')['azureblob']['connectionId']"
+                    }
+                  },
+                  "method": "post",
+                  "path": "/datasets/default/files",
+                  "queries": {
+                    "folderPath": "/other-party-plate-images",
+                    "name": "@concat('other-party-plate-',triggerBody()?['claimId'])"
+                  }
+                },
+                "runAfter": {},
+                "type": "ApiConnection"
+              }
+            },
+            "else": {
+              "actions": {
+                "Condition_2": {
+                  "actions": {
+                    "StoreCardImageToBlob": {
+                      "inputs": {
+                        "body": "@json(concat('{\"$content-type\":\"image/jpeg\",\"$content\":\"',item()?['plateJson'],'\"}'))",
+                        "host": {
+                          "api": {
+                            "runtimeUrl": "https://logic-apis-westus.azure-apim.net/apim/azureblob"
+                          },
+                          "connection": {
+                            "name": "@parameters('$connections')['azureblob']['connectionId']"
+                          }
+                        },
+                        "method": "post",
+                        "path": "/datasets/default/files",
+                        "queries": {
+                          "folderPath": "/other-party-card-images",
+                          "name": "@concat('other-party-card-',triggerBody()?['claimId'])"
+                        }
+                      },
+                      "runAfter": {},
+                      "type": "ApiConnection"
+                    }
+                  },
+                  "else": {
+                    "actions": {
+                      "StoreDriverLicenseImageToBlob": {
+                        "inputs": {
+                          "body": "@json(concat('{\"$content-type\":\"image/jpeg\",\"$content\":\"',item()?['plateJson'],'\"}'))",
+                          "host": {
+                            "api": {
+                              "runtimeUrl": "https://logic-apis-westus.azure-apim.net/apim/azureblob"
+                            },
+                            "connection": {
+                              "name": "@parameters('$connections')['azureblob']['connectionId']"
+                            }
+                          },
+                          "method": "post",
+                          "path": "/datasets/default/files",
+                          "queries": {
+                            "folderPath": "/other-party-license-images",
+                            "name": "@concat('other-party-license-',triggerBody()?['claimId'])"
+                          }
+                        },
+                        "runAfter": {},
+                        "type": "ApiConnection"
+                      }
+                    }
+                  },
+                  "expression": "@equals(item()?['kind'], 'InsuranceCard')",
+                  "runAfter": {},
+                  "type": "If"
+                }
+              }
+            },
+            "expression": "@equals(item()?['kind'], 'LicensePlate')",
+            "runAfter": {},
+            "type": "If"
+          }
+        },
+        "foreach": "@triggerBody()?['postImages']?['otherPartyImages']",
+        "runAfter": {
+          "Persist_new_claim_to_DB": [
+            "Succeeded"
+          ],
+          "TrackCustomEvent_-_after_saving_claim_to_mobile_claim_db": [
+            "Succeeded"
+          ]
+        },
+        "type": "Foreach"
+      },
+      "TrackCustomEvent_-_after_saving_claim_images_to_blob": {
+        "inputs": {
+          "body": {
+            "EventName": "Logic App Status",
+            "Metrics": {
+              "Logic App": 0
+            },
+            "Properties": {
+              "CorrelationId": "@{triggerBody()?['claimId']}",
+              "Description": "Contoso Logic App - Create Mobile Claim From Web - save claim images successfully",
+              "Host": "To be determined",
+              "LogType": "Status Log",
+              "RunName": "@workflow()['run']['name']"
+            }
+          },
+          "function": {
+            "id": "[concat(resourceId('Microsoft.Web/sites', variables('functionAppName')), '/functions/TrackCustomEvent')]"
+          }
+        },
+        "runAfter": {
+          "Save_Claim_Images": [
+            "Succeeded"
+          ]
+        },
+        "type": "Function"
+      },
+      "TrackCustomEvent_-_after_saving_claim_to_mobile_claim_db": {
+        "inputs": {
+          "body": {
+            "EventName": "Logic App Status",
+            "Metrics": {
+              "Logic App": 0
+            },
+            "Properties": {
+              "CorrelationId": "@{triggerBody()?['claimId']}",
+              "Description": "Contoso Logic App - Create Mobile Claim From Web - inserted new claim successfully",
+              "Host": "To be determined",
+              "LogType": "Status Log",
+              "RunName": "@workflow()['run']['name']"
+            }
+          },
+          "function": {
+            "id": "[concat(resourceId('Microsoft.Web/sites', variables('functionAppName')), '/functions/TrackCustomEvent')]"
+          }
+        },
+        "runAfter": {
+          "Persist_new_claim_to_DB": [
+            "Succeeded"
+          ]
+        },
+        "type": "Function"
+      },
+      "TrackCustomEvent_-_after_saving_other_party_images_to_blob": {
+        "inputs": {
+          "body": {
+            "EventName": "Logic App Status",
+            "Metrics": {
+              "Logic App": 0
+            },
+            "Properties": {
+              "CorrelationId": "@{triggerBody()?['claimId']}",
+              "Description": "Contoso Logic App - Create Mobile Claim From Web - save other party images successfully",
+              "Host": "To be determined",
+              "LogType": "Status Log",
+              "RunName": "@workflow()['run']['name']"
+            }
+          },
+          "function": {
+            "id": "[concat(resourceId('Microsoft.Web/sites', variables('functionAppName')), '/functions/TrackCustomEvent')]"
+          }
+        },
+        "runAfter": {
+          "Save_Other_Party_Images": [
+            "Succeeded"
+          ]
+        },
+        "type": "Function"
+      },
+      "TrackCustomEvent_-_after_sending_message_to_queue_": {
+        "inputs": {
+          "body": {
+            "EventName": "Logic App Status",
+            "Metrics": {
+              "Logic App": 0
+            },
+            "Properties": {
+              "CorrelationId": "@{triggerBody()?['claimId']}",
+              "Description": "Contoso Logic App - Create Mobile Claim From Web - put a message to mobile claim queue successfully",
+              "Host": "To be determined",
+              "LogType": "Status Log",
+              "RunName": "@workflow()['run']['name']"
+            }
+          },
+          "function": {
+            "id": "[concat(resourceId('Microsoft.Web/sites', variables('functionAppName')), '/functions/TrackCustomEvent')]"
+          }
+        },
+        "runAfter": {
+          "Put_a_message_on_a_queue": [
+            "Succeeded"
+          ]
+        },
+        "type": "Function"
+      }
+    },
+    "contentVersion": "1.0.0.0",
+    "outputs": {},
+    "parameters": {
+      "$connections": {
+        "defaultValue": {},
+        "type": "Object"
+      }
+    },
+    "triggers": {
+      "manual": {
+        "inputs": {
+          "method": "POST",
+          "schema": {
+            "properties": {
+              "claimId": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "phonenumber": {
+                "type": "string"
+              },
+              "postImages": {
+                "properties": {
+                  "claimImages": {
+                    "items": {
+                      "properties": {
+                        "plateJson": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "plateJson"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "otherPartyImages": {
+                    "items": {
+                      "properties": {
+                        "kind": {
+                          "type": "string"
+                        },
+                        "plateJson": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "plateJson"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              },
+              "userId": {
+                "type": "string"
+              },
+              "vehicleId": {
+                "type": "int"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "kind": "Http",
+        "type": "Request"
+      }
+    }
+  }
+}

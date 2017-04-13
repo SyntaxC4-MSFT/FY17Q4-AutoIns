@@ -1,0 +1,80 @@
+﻿@{
+    ViewBag.Title = "Add Claim";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var viewModel = (ViewBag.MockInfo) as ContosoInsurance.MVC.Models.AddClaimViewModel;
+}
+
+@section styles {
+    @Styles.Render("~/Content/create")
+}
+@section scripts {
+    @Scripts.Render("~/bundles/create")
+}
+
+<div class="claim-create-main">
+    <h2>Add Claim</h2>
+    <div class="claim-create-row">
+        <a href="javascript:void(0)" onclick="openSection(event, 'vehicle');">
+            <div class="claim-create-third tablink claim-create-bottombar claim-create-hover-light-grey claim-create-padding claim-create-border-red">Your Vehicle</div>
+        </a>
+        <a href="javascript:void(0)" onclick="openSection(event, 'party');">
+            <div class="claim-create-third tablink claim-create-bottombar claim-create-hover-light-grey claim-create-padding">2nd Party Info</div>
+        </a>
+        <a href="javascript:void(0)" onclick="openSection(event, 'detail');">
+            <div class="claim-create-third tablink claim-create-bottombar claim-create-hover-light-grey claim-create-padding">Claim Details</div>
+        </a>
+    </div>
+
+    <div id="vehicle" class="claim-create-container section vehicle">
+        <h2>Your Vehicle</h2>
+        <div class="vehicle-img-container">
+            <img src="@Url.Content(viewModel.SelectedVehiclePath)" />
+            <h2>JED-886</h2>
+        </div>
+    </div>
+
+    <div id="party" class="claim-create-container section party" style="display:none">
+        <div class="phone">
+            <div class="input-group">
+                <span class="input-group-addon" id="basic-addon1">Phone Number</span>
+                <input type="text" name="phone" id="phone" class="form-control" placeholder="Please enter phone number here." aria-describedby="basic-addon1" data-bind="textInput:createClaimForm.formData.phonenumber" >
+            </div>
+        </div>
+        <ul>
+            <li>
+                <h2>License Plate</h2>
+                <img src="@Url.Content(viewModel.LicensePlatePath)" />
+            </li>
+            <li>
+                <h2>Insurance Card</h2>
+                <img src="@Url.Content(viewModel.PolicyIDPath)" />
+            </li>
+            <li>
+                <h2>Drivers Licence</h2>
+                <img src="@Url.Content(viewModel.DriverLicensePath)" />
+            </li>
+        </ul>
+    </div>
+    <div id="detail" class="claim-create-container section details" style="display:none">
+        <div class="form-group">
+            <label for="comment">Description:</label>
+            <textarea class="form-control description" rows="5" id="description" style="max-width:100%;" placeholder="Please enter phone number here." aria-describedby="basic-addon1" data-bind="textInput:createClaimForm.formData.description" ></textarea>
+        </div>
+        <div class="crash-images">
+            <h2>Images</h2>
+            <ul>
+                @foreach (var item in viewModel.CrashImagesPaths)
+                {
+                    <li>
+                        <img src="@Url.Content(item)" />
+                    </li>
+                }
+            </ul>
+        </div>
+        <div class="btn-section">
+            <a data-bind="click:createClaimForm.doSubmit,css: { clicked:createClaimForm.EnableSubmitButton()==false}">Submit</a>
+        </div>
+        <span class="submit-tip" data-bind="text:createClaimForm.submitTip"></span>
+    </div>
+</div>
+

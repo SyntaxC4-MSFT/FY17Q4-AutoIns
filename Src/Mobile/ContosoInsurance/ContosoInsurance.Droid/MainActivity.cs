@@ -7,16 +7,12 @@ using Android.Content;
 using HockeyApp.Android;
 using HockeyApp.Android.Metrics;
 using Gcm.Client;
-using Xamarin.Forms;
 using Xamarin.Forms.Platform.Android;
-
-using Android.Support.V7.App;
-using Android.Widget;
 using Toolbar = Android.Support.V7.Widget.Toolbar;
 
 namespace ContosoInsurance.Droid
 {
-    [Activity (Label = "Contoso Insurance", Icon = "@drawable/icon", MainLauncher = false, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation)]
+    [Activity (Label = "Contoso Insurance", Icon = "@drawable/icon", MainLauncher = false, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation , ScreenOrientation = ScreenOrientation.Portrait)]
     public class MainActivity : FormsAppCompatActivity
     {
         public static MainActivity instance;
@@ -28,25 +24,32 @@ namespace ContosoInsurance.Droid
 
             base.OnCreate (bundle);
 
-            this.Window.AddFlags(WindowManagerFlags.Fullscreen);
+            Window.AddFlags(WindowManagerFlags.Fullscreen);
+            this.Window.DecorView.SystemUiVisibility = StatusBarVisibility.Hidden;
+
+            if (Build.VERSION.SdkInt >= BuildVersionCodes.Lollipop)
+            {
+                var statusBarHeightInfo = typeof(FormsAppCompatActivity).GetField("_statusBarHeight", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                statusBarHeightInfo.SetValue(this, 0);
+            }
+
 
             global::Xamarin.Forms.Forms.Init(this, bundle);
 
             Microsoft.WindowsAzure.MobileServices.CurrentPlatform.Init();
 
             App.UIContext = this;
-            LoadApplication(new ContosoInsurance.App());
+            LoadApplication(new App());
 
             instance = this;
 
-            Toolbar toolbar = (Toolbar)FindViewById(ContosoInsurance.Droid.Resource.Id.toolbar);
+            Toolbar toolbar = (Toolbar)FindViewById(Resource.Id.toolbar);
             SetSupportActionBar(toolbar);
 
             SupportActionBar.SetDisplayHomeAsUpEnabled(true);
             SupportActionBar.SetHomeButtonEnabled(true);
 
-            toolbar.SetNavigationIcon(ContosoInsurance.Droid.Resource.Drawable.navmenu);
-            //toolbar.SetLogo(ContosoInsurance.Droid.Resource.Drawable.navmenu);
+            toolbar.SetNavigationIcon(Resource.Drawable.navmenu);
 
             try
             {

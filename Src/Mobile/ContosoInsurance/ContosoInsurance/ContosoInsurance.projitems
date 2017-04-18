@@ -16,7 +16,9 @@
     <Import_RootNamespace>ContosoInsurance</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)App.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)App.xaml.cs">
+      <DependentUpon>App.xaml</DependentUpon>
+    </Compile>
     <Compile Include="$(MSBuildThisFileDirectory)Converters\CustomConvert.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\AuthHandler.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Helpers\FileHelper.cs" />
@@ -33,8 +35,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)ViewModels\ClaimViewModel.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ViewModels\FileViewModel.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ViewModels\VehiclesListViewModel.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Views\Custom\CustomEntry.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Views\Custom\CustomImage.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Views\Custom\CustomIncidentIcon.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Views\Custom\CustomToolBar.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Views\Custom\CustomVehicleFrame.cs" />
@@ -95,5 +95,11 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:UpdateDesignTimeXaml</Generator>
     </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="$(MSBuildThisFileDirectory)App.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
 </Project>

@@ -5,16 +5,12 @@ using Microsoft.WindowsAzure.MobileServices.Sync;
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using Xamarin.Media;
 using Microsoft.WindowsAzure.MobileServices;
 using Foundation;
-//using Facebook.LoginKit;
 using UIKit;
-using System.Diagnostics;
-using Newtonsoft.Json.Linq;
-using System.Linq;
 using ContosoInsurance.Helpers;
 using Xamarin.Geolocation;
+using Media.Plugin;
 
 [assembly: Xamarin.Forms.Dependency(typeof(ContosoInsurance.iOS.TouchPlatform))]
 namespace ContosoInsurance.iOS
@@ -53,9 +49,16 @@ namespace ContosoInsurance.iOS
         public async Task<string> TakePhotoAsync(object context)
         {
             try {
-                var mediaPicker = new MediaPicker();
-                var mediaFile = await mediaPicker.PickPhotoAsync();
-                return mediaFile.Path;
+                if (!CrossMedia.Current.IsPickPhotoSupported)
+                {
+                    return null;
+                }
+
+                var file = await CrossMedia.Current.PickPhotoAsync();
+
+                if (file == null)
+                    return null;
+                return file.Path;
             }
             catch (TaskCanceledException) {
                 return null;

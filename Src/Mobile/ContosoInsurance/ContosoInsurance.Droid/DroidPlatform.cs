@@ -6,20 +6,18 @@ using Microsoft.WindowsAzure.MobileServices.Sync;
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using Xamarin.Media;
 using Microsoft.WindowsAzure.MobileServices;
 using Android.Webkit;
 using Xamarin.Forms;
-using Xamarin.Auth;
 using ContosoInsurance.Helpers;
 using Xamarin.Geolocation;
+using Media.Plugin;
 
 [assembly: Xamarin.Forms.Dependency(typeof(ContosoInsurance.Droid.DroidPlatform))]
 namespace ContosoInsurance.Droid
 {
     public class DroidPlatform : IPlatform
     {
-
         public async Task DownloadFileAsync<T>(IMobileServiceSyncTable<T> table, MobileServiceFile file, string fullPath)
         {
             await table.DownloadFileAsync(file, fullPath);
@@ -27,7 +25,7 @@ namespace ContosoInsurance.Droid
 
         public async Task<IMobileServiceFileDataSource> GetFileDataSource(MobileServiceFileMetadata metadata)
         {
-            var filePath = 
+            var filePath =
                 await FileHelper.GetLocalFilePathAsync(
                     metadata.ParentDataItemId, metadata.FileName, dataFilesPath: await GetDataFilesPath());
             return new PathMobileServiceFileDataSource(filePath);
@@ -44,7 +42,8 @@ namespace ContosoInsurance.Droid
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
             string filesPath = Path.Combine(appData, "ContosoImages");
 
-            if (!Directory.Exists(filesPath)) {
+            if (!Directory.Exists(filesPath))
+            {
                 Directory.CreateDirectory(filesPath);
             }
 
@@ -53,16 +52,21 @@ namespace ContosoInsurance.Droid
 
         public async Task<string> TakePhotoAsync(object context)
         {
-            try {
-                var uiContext = context as Context;
-                if (uiContext != null) {
-                    var mediaPicker = new MediaPicker(uiContext);
-                    var photo = await mediaPicker.PickPhotoAsync();
-
-                    return photo.Path;
+            try
+            {
+                if (!CrossMedia.Current.IsPickPhotoSupported)
+                {
+                    return null;
                 }
+                var file = await CrossMedia.Current.PickPhotoAsync();
+
+                if (file == null)
+                    return null;
+
+                return file.Path;
             }
-            catch (TaskCanceledException) {
+            catch (TaskCanceledException)
+            {
             }
 
             return null;
@@ -77,12 +81,6 @@ namespace ContosoInsurance.Droid
         public void ClearCache()
         {
             CookieManager.Instance.RemoveAllCookie();
-        }
-
-
-        public AccountStore GetAccountStore()
-        {
-            return AccountStore.Create(Forms.Context);
         }
 
         public async Task<Position> GetGeolocator(object context)

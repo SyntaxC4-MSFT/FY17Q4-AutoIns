@@ -37,11 +37,7 @@
                     </RowDefinition>
                 </Grid.RowDefinitions>
                 <Grid Grid.Row="0"/>
-                <Image Grid.Row="1" Source="segement2.png" Aspect="AspectFit" HorizontalOptions="FillAndExpand">
-                    <Image.Margin>
-                        <OnPlatform x:TypeArguments="Thickness" iOS="15,0" Android="0" />
-                    </Image.Margin>
-                </Image>
+                <Image Grid.Row="1" Source="segement2.png" Style="{DynamicResource ImageStyle}" Margin="{DynamicResource ImageMargin}"/>
                 <Grid Grid.Row="2">
                     <Label Text="PHONE NUMBER" FontSize="Medium" TextColor="#555555" VerticalTextAlignment="Center" HorizontalTextAlignment="Center" HeightRequest="45">
                     </Label>

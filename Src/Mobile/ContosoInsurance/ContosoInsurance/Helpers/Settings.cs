@@ -24,7 +24,7 @@ namespace ContosoInsurance
             set { AppSettings.AddOrUpdateValue<string>(MobileAppUrlKey, value); }
         }
         private const string MobileAppUrlKey = nameof(MobileAppUrlKey);
-        public const string DefaultMobileAppUrl = "http://contosoinsurance4bisrf-api.azurewebsites.net";//"https://contosoinsurancekgtqow-api.azurewebsites.net";//"https://contosoinsurance-api.azurewebsites.net";
+        public const string DefaultMobileAppUrl = "https://contosoinsurance-api.azurewebsites.net";
 
         public string MobileHockeyAppId
         {
@@ -33,7 +33,7 @@ namespace ContosoInsurance
             set { AppSettings.AddOrUpdateValue<string>(HockeyAppIdKey, value); }
         }
         private const string HockeyAppIdKey = nameof(HockeyAppIdKey);
-        public const string DefaultHockeyAppId = "8e7c354ae6d34dc7bacfc5033f4a88d1";
+        public const string DefaultHockeyAppId = "c6416843fe69436c97f983b6c24fe355"; 
 
         public string MobileGcmSenderId
         {

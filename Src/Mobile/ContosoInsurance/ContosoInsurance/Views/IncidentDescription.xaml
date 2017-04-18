@@ -31,11 +31,7 @@
                     </RowDefinition>
                 </Grid.RowDefinitions>
                 <Grid Grid.Row="0"/>
-                <Image Grid.Row="1" Source="segement3.png" Aspect="AspectFit" HorizontalOptions="FillAndExpand">
-                    <Image.Margin>
-                        <OnPlatform x:TypeArguments="Thickness" iOS="15,0" Android="0" />
-                    </Image.Margin>
-                </Image>
+                <Image Grid.Row="1" Source="segement3.png" Style="{DynamicResource ImageStyle}" Margin="{DynamicResource ImageMargin}"/>
                 <Grid Grid.Row="2" Margin="15, 0, 15, 15" RowSpacing="0" VerticalOptions="FillAndExpand" BackgroundColor="White">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="45" />

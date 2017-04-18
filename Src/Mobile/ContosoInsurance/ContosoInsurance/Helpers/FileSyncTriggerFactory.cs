@@ -86,10 +86,13 @@ namespace ContosoInsurance
         {
             if (obj.Source == FileOperationSource.Local) {
                 IMobileServiceSyncTable table = this.mobileServiceClient.GetSyncTable(obj.File.TableName);
-                JObject item = await table.LookupAsync(obj.File.ParentId);
-
-                if (item != null) {
-                    await table.UpdateAsync(item);
+                if(obj.File.ParentId != null)
+                {
+                    JObject item = await table.LookupAsync(obj.File.ParentId);
+                    if (item != null)
+                    {
+                        await table.UpdateAsync(item);
+                    }
                 }
             }
         }

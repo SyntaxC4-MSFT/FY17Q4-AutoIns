@@ -20,13 +20,6 @@ namespace ContosoInsurance.Helpers
         }        
     }
 
-    public class SyncCompletedEvent : MobileServiceEvent
-    {
-        public static SyncCompletedEvent Instance = new SyncCompletedEvent();
-
-        public SyncCompletedEvent() : base("SyncCompletedEvent") { }
-    }
-
     public class ActivityIndicatorScope : IDisposable
     {
         private ActivityIndicator indicator;

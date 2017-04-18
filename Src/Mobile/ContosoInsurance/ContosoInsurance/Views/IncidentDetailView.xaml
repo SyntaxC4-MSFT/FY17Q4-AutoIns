@@ -37,11 +37,7 @@
                     </RowDefinition>
                 </Grid.RowDefinitions>
                 <Grid Grid.Row="0"/>
-                <Image Grid.Row="1" Source="segement3.png" Aspect="AspectFit" HorizontalOptions="FillAndExpand">
-                    <Image.Margin>
-                        <OnPlatform x:TypeArguments="Thickness" iOS="15,0" Android="0" />
-                    </Image.Margin>
-                </Image>
+                <Image Grid.Row="1" Source="segement3.png" Style="{DynamicResource ImageStyle}" Margin="{DynamicResource ImageMargin}"/>
                 <ScrollView Grid.Row="2">
                     <StackLayout Padding="0,0" >
                         <Grid RowSpacing="0" VerticalOptions="FillAndExpand">
@@ -73,8 +69,7 @@
                                 <Label  Text="IMAGES" FontSize="Medium" TextColor="#555555" VerticalTextAlignment="Center" HorizontalTextAlignment="Center" HorizontalOptions="FillAndExpand" VerticalOptions="Center" />
                             </Grid>
                             <Grid Grid.Row="1"  Padding="15,0">
-                                <Image x:Name="selectImageSource" Source="CameraBk.png">
-                                </Image>
+                                <Image x:Name="selectImageSource" Source="CameraBk.png"/>
                             </Grid>
                             <Grid Grid.Row="3" Padding="15,0">
                                 <Grid RowSpacing="0" ColumnSpacing="22" x:Name="incidentIconsCtrl">

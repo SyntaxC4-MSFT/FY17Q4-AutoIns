@@ -101,7 +101,9 @@
     "azurequeuesConnectionName": "[concat(variables('lowerSiteName'), '-azurequeues')]",
     "azureblobConnectionName": "[concat(variables('lowerSiteName'), '-azureblob')]",
     "mobileSqlConnectionName": "[concat(variables('lowerSiteName'), '-mobilesql')]",
+    "MobileDatabaseName": "MobileClaims",
     "crmSqlConnectionName": "[concat(variables('lowerSiteName'), '-crmsql')]",
+    "CRMDatabaseName": "CRMClaims",
     "storageAccountName": "[concat(variables('lowerSiteName'), variables('nameSuffix'))]",
     "sqlServerName": "[concat(variables('lowerSiteName'), variables('nameSuffix'), '-dbserver')]",
     "notificationHubName": "[concat(variables('lowerSiteName'), variables('nameSuffix'))]",
@@ -138,7 +140,11 @@
         "api": {
           "id": "[concat(subscription().id,'/providers/Microsoft.Web/locations/', resourceGroup().location, '/managedApis/azurequeues')]"
         },
-        "displayName": "[variables('azurequeuesConnectionName')]"
+        "displayName": "[variables('azurequeuesConnectionName')]",
+        "parameterValues": {
+            "storageAccountName": "[variables('storageAccountName')]",
+            "sharedStorageKey": "listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2015-05-01-preview').key1"
+        }
       }
     },
     {
@@ -150,7 +156,11 @@
         "api": {
           "id": "[concat(subscription().id,'/providers/Microsoft.Web/locations/', resourceGroup().location, '/managedApis/azureblob')]"
         },
-        "displayName": "[variables('azureblobConnectionName')]"
+        "displayName": "[variables('azureblobConnectionName')]",
+        "parameterValues": {
+            "storageAccountName": "[variables('storageAccountName')]",
+            "sharedStorageKey": "listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2015-05-01-preview').key1"
+        }
       }
     },
     {
@@ -162,7 +172,10 @@
         "api": {
           "id": "[concat(subscription().id,'/providers/Microsoft.Web/locations/', resourceGroup().location, '/managedApis/sql')]"
         },
-        "displayName": "[variables('mobileSqlConnectionName')]"
+        "displayName": "[variables('mobileSqlConnectionName')]",
+        "parameterValues": {
+            "sqlConnectionString": "[concat('Server=tcp:',variables('sqlServerName'),'.database.windows.net,1433;Initial Catalog=', variables('MobileDatabaseName'), ';Persist Security Info=False;User ID=',parameters('sqlAdministratorLoginUsername'),';Password=',parameters('sqlAdministratorLoginPassword'),';MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;')]"
+        }
       }
     },
     {
@@ -174,7 +187,10 @@
         "api": {
           "id": "[concat(subscription().id,'/providers/Microsoft.Web/locations/', resourceGroup().location, '/managedApis/sql')]"
         },
-        "displayName": "[variables('crmSqlConnectionName')]"
+        "displayName": "[variables('crmSqlConnectionName')]",
+        "parameterValues": {
+            "sqlConnectionString": "[concat('Server=tcp:',variables('sqlServerName'),'.database.windows.net,1433;Initial Catalog=', variables('CRMDatabaseName'), ';Persist Security Info=False;User ID=',parameters('sqlAdministratorLoginUsername'),';Password=',parameters('sqlAdministratorLoginPassword'),';MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;')]"
+        }
       }
     },
     {
@@ -230,7 +246,7 @@
         {
           "type": "databases",
           "kind": "v12.0,user",
-          "name": "CRMClaims",
+          "name": "[variables('CRMDatabaseName')]",
           "apiVersion": "2014-04-01-preview",
           "location": "[variables('location')]",
           "properties": {
@@ -259,7 +275,7 @@
         {
           "type": "databases",
           "kind": "v12.0,user",
-          "name": "MobileClaims",
+          "name": "[variables('MobileDatabaseName')]",
           "apiVersion": "2014-04-01-preview",
           "location": "[variables('location')]",
           "properties": {
@@ -315,6 +331,10 @@
             {
               "name": "FUNCTIONS_EXTENSION_VERSION",
               "value": "latest"
+            },
+            {
+              "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+              "value": "[reference(resourceId('Microsoft.Insights/components', variables('applicationInsightsName')), '2014-04-01').InstrumentationKey]"
             }
           ]
         }
@@ -2037,11 +2057,11 @@
           ],
           "properties": {
             "MobileClaims": {
-              "value": "[concat('Server=tcp:', reference(concat('Microsoft.Sql/servers/', variables('sqlServerName'))).fullyQualifiedDomainName, ',1433;Database=MobileClaims;User Id=', parameters('sqlAdministratorLoginUsername'), '@', variables('sqlServerName'), ';Password=', parameters('sqlAdministratorLoginPassword'), ';')]",
+              "value": "[concat('Server=tcp:', reference(concat('Microsoft.Sql/servers/', variables('sqlServerName'))).fullyQualifiedDomainName, ',1433;Database=', variables('MobileDatabaseName'), ';User Id=', parameters('sqlAdministratorLoginUsername'), '@', variables('sqlServerName'), ';Password=', parameters('sqlAdministratorLoginPassword'), ';')]",
               "type": "SQLAzure"
             },
             "CRMClaims": {
-              "value": "[concat('Server=tcp:', reference(concat('Microsoft.Sql/servers/', variables('sqlServerName'))).fullyQualifiedDomainName, ',1433;Database=CRMClaims;User Id=', parameters('sqlAdministratorLoginUsername'), '@', variables('sqlServerName'), ';Password=', parameters('sqlAdministratorLoginPassword'), ';')]",
+              "value": "[concat('Server=tcp:', reference(concat('Microsoft.Sql/servers/', variables('sqlServerName'))).fullyQualifiedDomainName, ',1433;Database=', variables('CRMDatabaseName'), ';User Id=', parameters('sqlAdministratorLoginUsername'), '@', variables('sqlServerName'), ';Password=', parameters('sqlAdministratorLoginPassword'), ';')]",
               "type": "SQLAzure"
             }
           }
@@ -2128,11 +2148,11 @@
           ],
           "properties": {
             "MobileClaims": {
-              "value": "[concat('Server=tcp:', reference(concat('Microsoft.Sql/servers/', variables('sqlServerName'))).fullyQualifiedDomainName, ',1433;Database=MobileClaims;User Id=', parameters('sqlAdministratorLoginUsername'), '@', variables('sqlServerName'), ';Password=', parameters('sqlAdministratorLoginPassword'), ';')]",
+              "value": "[concat('Server=tcp:', reference(concat('Microsoft.Sql/servers/', variables('sqlServerName'))).fullyQualifiedDomainName, ',1433;Database=', variables('MobileDatabaseName'), ';User Id=', parameters('sqlAdministratorLoginUsername'), '@', variables('sqlServerName'), ';Password=', parameters('sqlAdministratorLoginPassword'), ';')]",
               "type": "SQLAzure"
             },
             "CRMClaims": {
-              "value": "[concat('Server=tcp:', reference(concat('Microsoft.Sql/servers/', variables('sqlServerName'))).fullyQualifiedDomainName, ',1433;Database=CRMClaims;User Id=', parameters('sqlAdministratorLoginUsername'), '@', variables('sqlServerName'), ';Password=', parameters('sqlAdministratorLoginPassword'), ';')]",
+              "value": "[concat('Server=tcp:', reference(concat('Microsoft.Sql/servers/', variables('sqlServerName'))).fullyQualifiedDomainName, ',1433;Database=', variables('CRMDatabaseName'), ';User Id=', parameters('sqlAdministratorLoginUsername'), '@', variables('sqlServerName'), ';Password=', parameters('sqlAdministratorLoginPassword'), ';')]",
               "type": "SQLAzure"
             }
           }

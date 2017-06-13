@@ -142,8 +142,8 @@
         },
         "displayName": "[variables('azurequeuesConnectionName')]",
         "parameterValues": {
-            "storageAccountName": "[variables('storageAccountName')]",
-            "sharedStorageKey": "listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2015-05-01-preview').key1"
+            "storageaccount": "[variables('storageAccountName')]",
+            "sharedkey": "listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2015-05-01-preview').key1"
         }
       }
     },
@@ -158,8 +158,8 @@
         },
         "displayName": "[variables('azureblobConnectionName')]",
         "parameterValues": {
-            "storageAccountName": "[variables('storageAccountName')]",
-            "sharedStorageKey": "listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2015-05-01-preview').key1"
+            "accountName": "[variables('storageAccountName')]",
+            "accessKey": "listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), '2015-05-01-preview').key1"
         }
       }
     },
@@ -174,7 +174,10 @@
         },
         "displayName": "[variables('mobileSqlConnectionName')]",
         "parameterValues": {
-            "sqlConnectionString": "[concat('Server=tcp:',variables('sqlServerName'),'.database.windows.net,1433;Initial Catalog=', variables('MobileDatabaseName'), ';Persist Security Info=False;User ID=',parameters('sqlAdministratorLoginUsername'),';Password=',parameters('sqlAdministratorLoginPassword'),';MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;')]"
+            "server": "[concat(variables('sqlServerName'),'.database.windows.net')]",
+            "database":"[variables('MobileDatabaseName')]",
+            "username": "[parameters('sqlAdministratorLoginUsername')]",
+            "password": "[parameters('sqlAdministratorLoginPassword')]"
         }
       }
     },
@@ -189,7 +192,10 @@
         },
         "displayName": "[variables('crmSqlConnectionName')]",
         "parameterValues": {
-            "sqlConnectionString": "[concat('Server=tcp:',variables('sqlServerName'),'.database.windows.net,1433;Initial Catalog=', variables('CRMDatabaseName'), ';Persist Security Info=False;User ID=',parameters('sqlAdministratorLoginUsername'),';Password=',parameters('sqlAdministratorLoginPassword'),';MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;')]"
+            "server": "[concat(variables('sqlServerName'),'.database.windows.net')]",
+            "database":"[variables('CRMDatabaseName')]",
+            "username": "[parameters('sqlAdministratorLoginUsername')]",
+            "password": "[parameters('sqlAdministratorLoginPassword')]"
         }
       }
     },
@@ -331,10 +337,6 @@
             {
               "name": "FUNCTIONS_EXTENSION_VERSION",
               "value": "latest"
-            },
-            {
-              "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
-              "value": "[reference(resourceId('Microsoft.Insights/components', variables('applicationInsightsName')), '2014-04-01').InstrumentationKey]"
             }
           ]
         }
@@ -359,7 +361,8 @@
             "MS_NotificationHubName": "[variables('notificationHubName')]",
             "MS_NotificationHubConnectionString": "[listkeys(resourceId('Microsoft.NotificationHubs/namespaces/notificationHubs/authorizationRules', variables('notificationHubNamespaceName'), variables('notificationHubName'), 'DefaultFullSharedAccessSignature'), '2014-09-01').primaryConnectionString]",
             "FUNCTIONS_EXTENSION_VERSION": "latest",
-            "command": "src\\Cloud\\ContosoInsurance.Function\\deploy.cmd"
+            "command": "src\\Cloud\\ContosoInsurance.Function\\deploy.cmd",
+            "APPINSIGHTS_INSTRUMENTATIONKEY": "[reference(resourceId('Microsoft.Insights/components', variables('applicationInsightsName')), '2014-04-01').InstrumentationKey]"
           }
         },
         {
